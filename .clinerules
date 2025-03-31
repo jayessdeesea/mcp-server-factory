@@ -1,0 +1,103 @@
+# Cline Custom Instructions
+
+We are building a Model Context Protocol (MCP) Server in Java
+
+**SPECIAL INSTRUCTIONS** for the AI
+- This document (.clinerules) is read only for the AI (you)
+- Read this document to understand rules but to not modify it
+
+## How to know when to give up
+
+- Failure is a natural part of development
+- Do not use unnatural approaches to accomplish your goals. Examples include
+  - Using mocks in src/main/java when the code doesn't work
+  - Using shell commands to return results when the code doesn't work
+- It is better to admit failure when the code doesn't work rather than to seek alternate solutions
+
+## License
+
+Use a mit license
+
+## Key Documents
+
+- README.md
+  - Update this after modifying code
+- docs/api/prompts.md
+  - The list of prompts this MCP Server supports
+  - Update this file after changing a prompts
+- docs/api/resources.md - supported resources
+  - The list of resources this MCP Server supports
+  - Update this file after changing a resources
+- docs/api/tools.md - supported tools
+  - The list of tools this MCP server suports
+  - Update this file after changing a tool
+
+## Key Dependencies
+
+Use the offical MCP SDK
+- Java - https://mvnrepository.com/artifact/io.modelcontextprotocol.sdk/mcp
+
+## External Resources
+
+- Use the local copy of the MCP SDK code base, if it exists, to better understand the API
+- The Java version is C:\Users\jayes\vscode\java-sdk-0.8.1
+- However do not use the local copy of the source as a code dependency
+  - Do not build the local copy of the MCP SDK code base
+  - Do not create a dependency on the local copy. Create a maven dependency instead
+
+## Terminal
+
+Assume your shell is powershell as we are running under microsoft windows
+- Unix commands may not be available so prefer powershell commands over unix commands
+- You don't seem to realize when commands are completed
+  - Try adding an extra return at the end of every command
+
+## Spring Framework
+
+- Use the Spring Framework
+- Do not use Spring Boot or the Spring Boot Starter
+- For classes in src/main/java
+  - The core business logic MUST NOT depend on spring to behave correctly
+    - Do not leverage features like Aspect Oriented Programming (AOP) in the core business logic
+  - Use Spring to initialize the business objects in the correct order
+    - Do not use spring classes outside of the user.jakecarr.config or the user.jakecarr.main java packages
+  - Use constructor injection where possible
+  - Use the initMethod attribute on @Bean as appropriate
+  - Use the destoryMethod attribute on @Bean as appropriate
+  - For classes in the io.modelcontextprotocol java package prefix
+    - Manage their lifecycle using spring 
+  - For classes annotated with @Configuration in user.jakecarr.config
+    - Only manage the lifecycle of a single object per class. This means there is only one method annotated with @Bean 
+    - The class should be suffixed with Config
+    
+## Logging
+
+- Written code uses java.util.logging.Logger
+- Use log4j2 as the implementation
+- Route logging frameworks (java.util.logging, slf4j, etc.) to the log4j2 implementation
+- all logs should go to stderr
+
+## Implementation
+
+- Use the following design principles KISS, DRY, YAGNI, and SOLID
+- Place code in the user.jakecarr java package
+- do not create wrapper .sh or .bat scripts. Instead implement maven tests
+- do not use deprecated classes
+- do not use deprecated methods
+- do not use recursion
+- For classes in src/main/java
+  - Do not use mocks
+- Classes with main methods go in user.jakecarr.main
+- Use final where possible, e.g., classes, class attributes, methods, method inputs, exceptions, ...
+
+## Debugging
+
+- do not set maven's failOnError to false
+- do not set testFailureIgnore to true
+- do not set mvn -Dmaven.compiler.failOnError=false 
+
+## Test
+
+- Add timeouts to the tests so they don't hang forever
+- Use mocks where appropriate
+
