@@ -56,6 +56,21 @@ Following the design principles:
   - `resources.md` - Documentation for supported resources
   - `tools.md` - Documentation for supported tools
 
+## Code Quality
+
+The codebase follows high-quality standards:
+
+- **Well-structured code** with clear separation of concerns
+- **Comprehensive documentation** with Javadoc comments for all classes and methods
+- **Modular design** with abstract base classes and interfaces
+- **Consistent error handling** with proper logging
+- **Maintainable architecture** with extracted methods and helper functions
+- **Clean code practices** including:
+  - Descriptive naming conventions
+  - Single responsibility principle
+  - DRY (Don't Repeat Yourself) principle
+  - Proper encapsulation
+
 ## Building and Running
 
 ### Prerequisites

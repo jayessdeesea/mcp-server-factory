@@ -36,13 +36,19 @@ public abstract class AbstractTaskPlannerTool implements TaskPlannerTool {
      * @param parameters The parameters for the tool execution
      * @return The result of the tool execution
      */
+    /**
+     * Executes the task planner tool with the specified parameters.
+     * 
+     * @param parameters The parameters for the tool execution
+     * @return The result of the tool execution
+     */
     @Override
     public ToolResult execute(Map<String, Object> parameters) {
         LOGGER.info("Executing task planner tool: " + getName() + " with parameters: " + parameters);
         
-        // Get the objective parameter
-        String objective = (String) parameters.get("objective");
-        if (objective == null || objective.isEmpty()) {
+        // Validate the objective parameter
+        String objective = validateObjectiveParameter(parameters);
+        if (objective == null) {
             return new ToolResult(false, "Missing required parameter: objective", null);
         }
         
@@ -54,41 +60,84 @@ public abstract class AbstractTaskPlannerTool implements TaskPlannerTool {
             // Analyze the objective and generate a task plan
             TaskPlan taskPlan = analyzeObjective(objective, context);
             
-            // Convert the task plan to a map for the result
-            Map<String, Object> result = new HashMap<>();
-            result.put("objective", taskPlan.getObjective());
-            result.put("summary", taskPlan.getSummary());
-            
-            // Convert the task steps to maps
-            result.put("steps", taskPlan.getSteps().stream()
-                .map(step -> {
-                    Map<String, Object> stepMap = new HashMap<>();
-                    stepMap.put("description", step.getDescription());
-                    stepMap.put("instruction", step.getInstruction());
-                    stepMap.put("metadata", step.getMetadata());
-                    return stepMap;
-                })
-                .toArray());
-            
-            // Create a detailed summary of the task plan
-            StringBuilder detailedSummary = new StringBuilder();
-            detailedSummary.append("Objective: ").append(taskPlan.getObjective()).append("\n\n");
-            detailedSummary.append("Summary: ").append(taskPlan.getSummary()).append("\n\n");
-            detailedSummary.append("Steps:\n");
-            
-            for (int i = 0; i < taskPlan.getSteps().size(); i++) {
-                TaskStep step = taskPlan.getSteps().get(i);
-                detailedSummary.append(i + 1).append(". ").append(step.getDescription()).append("\n");
-            }
-            
-            // Add the detailed summary to the result data
-            result.put("detailedSummary", detailedSummary.toString());
+            // Convert the task plan to a result
+            Map<String, Object> result = convertTaskPlanToResult(taskPlan);
             
             return new ToolResult(true, "Task plan generated successfully", result);
         } catch (Exception e) {
             LOGGER.warning("Failed to generate task plan: " + e.getMessage());
             return new ToolResult(false, "Failed to generate task plan: " + e.getMessage(), null);
         }
+    }
+    
+    /**
+     * Validates the objective parameter.
+     * 
+     * @param parameters The parameters to validate
+     * @return The validated objective, or null if invalid
+     */
+    private String validateObjectiveParameter(final Map<String, Object> parameters) {
+        final String objective = (String) parameters.get("objective");
+        if (objective == null || objective.isEmpty()) {
+            return null;
+        }
+        return objective;
+    }
+    
+    /**
+     * Converts a TaskPlan to a result map.
+     * 
+     * @param taskPlan The task plan to convert
+     * @return The result map
+     */
+    private Map<String, Object> convertTaskPlanToResult(final TaskPlan taskPlan) {
+        Map<String, Object> result = new HashMap<>();
+        result.put("objective", taskPlan.getObjective());
+        result.put("summary", taskPlan.getSummary());
+        
+        // Convert the task steps to maps
+        result.put("steps", taskPlan.getSteps().stream()
+            .map(this::convertTaskStepToMap)
+            .toArray());
+        
+        // Create a detailed summary of the task plan
+        result.put("detailedSummary", createDetailedSummary(taskPlan));
+        
+        return result;
+    }
+    
+    /**
+     * Converts a TaskStep to a map.
+     * 
+     * @param step The task step to convert
+     * @return The map representation of the task step
+     */
+    private Map<String, Object> convertTaskStepToMap(final TaskStep step) {
+        Map<String, Object> stepMap = new HashMap<>();
+        stepMap.put("description", step.getDescription());
+        stepMap.put("instruction", step.getInstruction());
+        stepMap.put("metadata", step.getMetadata());
+        return stepMap;
+    }
+    
+    /**
+     * Creates a detailed summary of the task plan.
+     * 
+     * @param taskPlan The task plan
+     * @return The detailed summary
+     */
+    private String createDetailedSummary(final TaskPlan taskPlan) {
+        StringBuilder detailedSummary = new StringBuilder();
+        detailedSummary.append("Objective: ").append(taskPlan.getObjective()).append("\n\n");
+        detailedSummary.append("Summary: ").append(taskPlan.getSummary()).append("\n\n");
+        detailedSummary.append("Steps:\n");
+        
+        for (int i = 0; i < taskPlan.getSteps().size(); i++) {
+            TaskStep step = taskPlan.getSteps().get(i);
+            detailedSummary.append(i + 1).append(". ").append(step.getDescription()).append("\n");
+        }
+        
+        return detailedSummary.toString();
     }
     
     /**

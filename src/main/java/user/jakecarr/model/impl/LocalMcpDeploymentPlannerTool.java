@@ -19,21 +19,52 @@ public class LocalMcpDeploymentPlannerTool extends AbstractTaskPlannerTool {
     private static final String NAME = "local_mcp_deployment_planner";
     private static final String DESCRIPTION = "Generates a task plan for deploying local MCP servers";
     
+    /**
+     * Gets the name of the task planner tool.
+     * 
+     * @return The tool name
+     */
     @Override
     public String getName() {
         return NAME;
     }
     
+    /**
+     * Gets the description of the task planner tool.
+     * 
+     * @return The tool description
+     */
     @Override
     public String getDescription() {
         return DESCRIPTION;
     }
     
+    /**
+     * Analyzes a high-level local MCP deployment objective and generates a task plan.
+     * 
+     * @param objective The high-level objective to analyze
+     * @param context Additional context for the task planning
+     * @return A task plan with actionable steps
+     */
     @Override
-    public TaskPlan analyzeObjective(String objective, Map<String, Object> context) {
+    public TaskPlan analyzeObjective(final String objective, final Map<String, Object> context) {
         LOGGER.info("Analyzing local MCP deployment objective: " + objective);
         
         // Create a list of task steps for local MCP server deployment
+        List<TaskStep> steps = createDeploymentSteps();
+        
+        // Create a summary of the task plan
+        String summary = createSummary();
+        
+        return new TaskPlan(objective, steps, summary);
+    }
+    
+    /**
+     * Creates the list of task steps for local MCP server deployment.
+     * 
+     * @return The list of task steps
+     */
+    private List<TaskStep> createDeploymentSteps() {
         List<TaskStep> steps = new ArrayList<>();
         
         // Step 1: Clean
@@ -51,19 +82,57 @@ public class LocalMcpDeploymentPlannerTool extends AbstractTaskPlannerTool {
         // Step 5: Deploy
         steps.add(createDeployStep());
         
-        // Step 6: Verify
-        steps.add(createVerificationStep());
+        // Step 6: Update MCP Settings
+        steps.add(createUpdateMcpSettingsStep());
         
-        // Create a summary of the task plan
-        String summary = "This task plan provides a streamlined approach to deploying a local MCP server. " +
+        // Step 7: Verify with Ping
+        steps.add(createVerifyWithPingStep());
+        
+        return steps;
+    }
+    
+    /**
+     * Creates a summary of the task plan.
+     * 
+     * @return The summary
+     */
+    private String createSummary() {
+        return "This task plan provides a streamlined approach to deploying a local MCP server. " +
                 "It covers cleaning, building, testing, packaging, deployment to a standardized location, " +
                 "and verification. Each step includes error checking to abort the process if any step fails. " +
                 "Following this plan will result in a properly deployed MCP server that can be used with AI assistants.";
-        
-        return new TaskPlan(objective, steps, summary);
     }
     
+    /**
+     * Creates a task step with the specified parameters.
+     * 
+     * @param description The description of the step
+     * @param instruction The instruction for the step
+     * @param estimatedEffort The estimated effort for the step
+     * @param priority The priority of the step
+     * @param dependencies The dependencies of the step
+     * @param isCritical Whether the step is critical
+     * @param abortOnFailure Whether to abort on failure
+     * @return The created task step
+     */
+    private TaskStep createTaskStep(final String description, final String instruction, final String estimatedEffort, 
+                                   final String priority, final List<String> dependencies, final boolean isCritical, 
+                                   final boolean abortOnFailure) {
+        Map<String, Object> metadata = new HashMap<>();
+        metadata.put("estimatedEffort", estimatedEffort);
+        metadata.put("priority", priority);
+        metadata.put("dependencies", dependencies);
+        metadata.put("isCritical", isCritical);
+        metadata.put("abortOnFailure", abortOnFailure);
+        
+        return new TaskStep(description, instruction, metadata);
+    }
     
+    /**
+     * Creates the clean step.
+     * 
+     * @return The clean step
+     */
     private TaskStep createCleanStep() {
         String description = "Clean the project";
         String instruction = """
@@ -110,16 +179,14 @@ public class LocalMcpDeploymentPlannerTool extends AbstractTaskPlannerTool {
             Do not proceed with any further steps if the clean operation fails.
             """;
         
-        Map<String, Object> metadata = new HashMap<>();
-        metadata.put("estimatedEffort", "Low");
-        metadata.put("priority", "Critical");  // Changed from "High" to "Critical"
-        metadata.put("dependencies", new ArrayList<>());
-        metadata.put("isCritical", true);  // Added to indicate this step is critical
-        metadata.put("abortOnFailure", true);  // Added to indicate the process should abort on failure
-        
-        return new TaskStep(description, instruction, metadata);
+        return createTaskStep(description, instruction, "Low", "Critical", new ArrayList<>(), true, true);
     }
     
+    /**
+     * Creates the build step.
+     * 
+     * @return The build step
+     */
     private TaskStep createBuildStep() {
         String description = "Build the project";
         String instruction = """
@@ -166,16 +233,15 @@ public class LocalMcpDeploymentPlannerTool extends AbstractTaskPlannerTool {
             Do not proceed with any further steps if the build operation fails.
             """;
         
-        Map<String, Object> metadata = new HashMap<>();
-        metadata.put("estimatedEffort", "Low");
-        metadata.put("priority", "Critical");
-        metadata.put("dependencies", List.of("Clean the project"));
-        metadata.put("isCritical", true);  // Added to indicate this step is critical
-        metadata.put("abortOnFailure", true);  // Added to indicate the process should abort on failure
-        
-        return new TaskStep(description, instruction, metadata);
+        return createTaskStep(description, instruction, "Low", "Critical", 
+                             List.of("Clean the project"), true, true);
     }
     
+    /**
+     * Creates the test step.
+     * 
+     * @return The test step
+     */
     private TaskStep createTestStep() {
         String description = "Run tests";
         String instruction = """
@@ -372,39 +438,6 @@ public class LocalMcpDeploymentPlannerTool extends AbstractTaskPlannerTool {
             Copy-Item -Path $jarFile.FullName -Destination $jarPath -Force
             Write-Host "Copied JAR to: $jarPath"
             
-            # Update MCP settings
-            $settingsDir = "$env:APPDATA\\Code\\User\\globalStorage\\saoudrizwan.claude-dev\\settings"
-            $settingsPath = "$settingsDir\\cline_mcp_settings.json"
-            
-            if (Test-Path -Path $settingsPath) {
-                Write-Host "Found MCP settings file, updating..."
-                $settings = Get-Content -Path $settingsPath | ConvertFrom-Json
-                
-                # Add or update server entry
-                if (-not $settings.mcpServers) {
-                    $settings | Add-Member -MemberType NoteProperty -Name "mcpServers" -Value @{}
-                }
-                
-                $serverEntry = @{
-                    command = "java"
-                    args = @("-jar", $jarPath)
-                    env = @{
-                        LAST_MODIFIED = (Get-Date).ToString("o")
-                    }
-                    disabled = $false
-                    autoApprove = @()
-                }
-                
-                $settings.mcpServers | Add-Member -MemberType NoteProperty -Name $serverName -Value $serverEntry -Force
-                
-                # Save updated settings
-                $settings | ConvertTo-Json -Depth 10 | Set-Content -Path $settingsPath
-                Write-Host "Updated MCP settings file"
-            } else {
-                Write-Error "MCP settings file not found at: $settingsPath"
-                Write-Host "You'll need to manually add this server to your MCP settings"
-            }
-            
             # Verify the deployment
             if (Test-Path -Path $jarPath) {
                 Write-Host "✓ JAR file deployed successfully to: $jarPath" -ForegroundColor Green
@@ -455,6 +488,109 @@ public class LocalMcpDeploymentPlannerTool extends AbstractTaskPlannerTool {
             cp "$jar_file" "$jar_path"
             echo "Copied JAR to: $jar_path"
             
+            # Verify the deployment
+            if [ -f "$jar_path" ]; then
+                echo -e "\033[32m✓ JAR file deployed successfully to: $jar_path\033[0m"
+            else
+                echo -e "\033[31mCRITICAL FAILURE: JAR file deployment failed. THE ENTIRE DEPLOYMENT PROCESS IS BEING ABORTED.\033[0m" >&2
+                echo -e "\033[31mFix the issues with the deploy step before attempting deployment again.\033[0m" >&2
+                exit 1  # This will terminate the entire script execution
+            fi
+            ```
+            
+            The deployment step copies the JAR file to the standard location ({HOME}/mcp-server/mcp-server-factory/lib/).
+            This creates a self-contained executable that can be used by the MCP system.
+            
+            IMPORTANT: This step is a critical prerequisite for all subsequent steps.
+            If this step fails for ANY reason, the entire deployment process MUST be aborted immediately.
+            Do not proceed with any further steps if the deployment operation fails.
+            """;
+        
+        Map<String, Object> metadata = new HashMap<>();
+        metadata.put("estimatedEffort", "Medium");
+        metadata.put("priority", "Critical");
+        metadata.put("dependencies", List.of("Package the project"));
+        metadata.put("isCritical", true);
+        metadata.put("abortOnFailure", true);
+        
+        return new TaskStep(description, instruction, metadata);
+    }
+    
+    /**
+     * Creates the update MCP settings step.
+     * 
+     * @return The update MCP settings step
+     */
+    private TaskStep createUpdateMcpSettingsStep() {
+        String description = "Update MCP settings";
+        String instruction = """
+            CRITICAL STEP: Update the MCP settings to register the server with Claude.
+            THIS STEP MUST SUCCEED OR THE ENTIRE DEPLOYMENT PROCESS WILL BE ABORTED.
+            
+            # For Windows PowerShell
+            ```powershell
+            # Get home directory and server name
+            Write-Host "Starting critical update MCP settings step..." -ForegroundColor Yellow
+            $homeDir = $env:USERPROFILE
+            $serverName = "mcp-server-factory"
+            
+            # Get the JAR path
+            $jarPath = Join-Path -Path $homeDir -ChildPath "mcp-server\\$serverName\\lib\\$serverName.jar"
+            if (-not (Test-Path -Path $jarPath)) {
+                Write-Error "CRITICAL FAILURE: JAR file not found at: $jarPath"
+                Write-Error "The deployment step must be completed successfully before updating MCP settings."
+                exit 1  # This will terminate the entire script execution
+            }
+            
+            # Update MCP settings
+            $settingsDir = "$env:APPDATA\\Code\\User\\globalStorage\\saoudrizwan.claude-dev\\settings"
+            $settingsPath = "$settingsDir\\cline_mcp_settings.json"
+            
+            if (Test-Path -Path $settingsPath) {
+                Write-Host "Found MCP settings file, updating..."
+                $settings = Get-Content -Path $settingsPath | ConvertFrom-Json
+                
+                # Add or update server entry
+                if (-not $settings.mcpServers) {
+                    $settings | Add-Member -MemberType NoteProperty -Name "mcpServers" -Value @{}
+                }
+                
+                $serverEntry = @{
+                    command = "java"
+                    args = @("-jar", $jarPath)
+                    env = @{
+                        LAST_MODIFIED = (Get-Date).ToString("o")
+                    }
+                    disabled = $false
+                    autoApprove = @()
+                }
+                
+                $settings.mcpServers | Add-Member -MemberType NoteProperty -Name $serverName -Value $serverEntry -Force
+                
+                # Save updated settings
+                $settings | ConvertTo-Json -Depth 10 | Set-Content -Path $settingsPath
+                Write-Host "✓ Updated MCP settings file successfully" -ForegroundColor Green
+            } else {
+                Write-Error "CRITICAL FAILURE: MCP settings file not found at: $settingsPath"
+                Write-Error "You'll need to manually add this server to your MCP settings."
+                exit 1  # This will terminate the entire script execution
+            }
+            ```
+            
+            # For Unix bash
+            ```bash
+            # Get home directory and server name
+            home_dir="$HOME"
+            server_name="mcp-server-factory"
+            
+            # Get the JAR path
+            jar_path="$home_dir/mcp-server/$server_name/lib/$server_name.jar"
+            if [ ! -f "$jar_path" ]; then
+                echo -e "\033[31mCRITICAL FAILURE: JAR file not found at: $jar_path\033[0m" >&2
+                echo -e "\033[31mThe deployment step must be completed successfully before updating MCP settings.\033[0m" >&2
+                exit 1  # This will terminate the entire script execution
+            fi
+            
             # Update MCP settings
             settings_dir="$HOME/.config/Code/User/globalStorage/saoudrizwan.claude-dev/settings"
             settings_path="$settings_dir/cline_mcp_settings.json"
@@ -480,46 +616,43 @@ public class LocalMcpDeploymentPlannerTool extends AbstractTaskPlannerTool {
                            "autoApprove": []
                        }' "$settings_path" > "${settings_path}.tmp" && mv "${settings_path}.tmp" "$settings_path"
                     
-                    echo "Updated MCP settings file"
+                    echo -e "\033[32m✓ Updated MCP settings file successfully\033[0m"
                 else
-                    echo "jq not found, cannot update settings file automatically"
-                    echo "You'll need to manually add this server to your MCP settings"
+                    echo -e "\033[31mCRITICAL FAILURE: jq not found, cannot update settings file automatically\033[0m" >&2
+                    echo -e "\033[31mYou'll need to manually add this server to your MCP settings.\033[0m" >&2
+                    exit 1  # This will terminate the entire script execution
                 fi
             else
-                echo "MCP settings file not found at: $settings_path"
-                echo "You'll need to manually add this server to your MCP settings"
-            fi
-            
-            # Verify the deployment
-            if [ -f "$jar_path" ]; then
-                echo -e "\033[32m✓ JAR file deployed successfully to: $jar_path\033[0m"
-            else
-                echo -e "\033[31mCRITICAL FAILURE: JAR file deployment failed. THE ENTIRE DEPLOYMENT PROCESS IS BEING ABORTED.\033[0m" >&2
-                echo -e "\033[31mFix the issues with the deploy step before attempting deployment again.\033[0m" >&2
+                echo -e "\033[31mCRITICAL FAILURE: MCP settings file not found at: $settings_path\033[0m" >&2
+                echo -e "\033[31mYou'll need to manually add this server to your MCP settings.\033[0m" >&2
                 exit 1  # This will terminate the entire script execution
             fi
             ```
             
-            The deployment step copies the JAR file to the standard location ({HOME}/mcp-server/mcp-server-factory/lib/)
-            and updates the MCP settings file to register the server with Claude.
-            This follows the same pattern used by other MCP servers.
+            The update MCP settings step registers the server with Claude by updating the MCP settings file.
+            This allows Claude to discover and use the server's tools and resources.
             
             IMPORTANT: This step is a critical prerequisite for all subsequent steps.
             If this step fails for ANY reason, the entire deployment process MUST be aborted immediately.
-            Do not proceed with any further steps if the deployment operation fails.
+            Do not proceed with any further steps if the update MCP settings operation fails.
             """;
         
         Map<String, Object> metadata = new HashMap<>();
-        metadata.put("estimatedEffort", "Medium");
+        metadata.put("estimatedEffort", "Low");
         metadata.put("priority", "Critical");
-        metadata.put("dependencies", List.of("Package the project"));
-        metadata.put("isCritical", true);  // Added to indicate this step is critical
-        metadata.put("abortOnFailure", true);  // Added to indicate the process should abort on failure
+        metadata.put("dependencies", List.of("Deploy the MCP server"));
+        metadata.put("isCritical", true);
+        metadata.put("abortOnFailure", true);
         
         return new TaskStep(description, instruction, metadata);
     }
     
-    private TaskStep createVerificationStep() {
+    /**
+     * Creates the verify with ping step.
+     * 
+     * @return The verify with ping step
+     */
+    private TaskStep createVerifyWithPingStep() {
         String description = "Verify the deployment";
         String instruction = """
             CRITICAL STEP: Verify the MCP server deployment by testing it with the ping tool.
@@ -596,7 +729,7 @@ public class LocalMcpDeploymentPlannerTool extends AbstractTaskPlannerTool {
         Map<String, Object> metadata = new HashMap<>();
         metadata.put("estimatedEffort", "Low");
         metadata.put("priority", "Critical");
-        metadata.put("dependencies", List.of("Deploy the MCP server"));
+        metadata.put("dependencies", List.of("Update MCP settings"));
         metadata.put("isCritical", true);  // Added to indicate this step is critical
         metadata.put("abortOnFailure", true);  // Added to indicate the process should abort on failure
         

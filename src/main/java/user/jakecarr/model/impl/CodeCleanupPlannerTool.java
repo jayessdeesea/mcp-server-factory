@@ -11,6 +11,8 @@ import java.util.logging.Logger;
 
 /**
  * Tool that generates task plans for code cleanup objectives.
+ * This tool analyzes a high-level code cleanup objective and generates
+ * a detailed task plan with actionable steps to improve code quality.
  */
 public class CodeCleanupPlannerTool extends AbstractTaskPlannerTool {
     private static final Logger LOGGER = Logger.getLogger(CodeCleanupPlannerTool.class.getName());
@@ -18,21 +20,52 @@ public class CodeCleanupPlannerTool extends AbstractTaskPlannerTool {
     private static final String NAME = "code_cleanup_planner";
     private static final String DESCRIPTION = "Generates a task plan for code cleanup objectives";
     
+    /**
+     * Gets the name of the task planner tool.
+     * 
+     * @return The tool name
+     */
     @Override
     public String getName() {
         return NAME;
     }
     
+    /**
+     * Gets the description of the task planner tool.
+     * 
+     * @return The tool description
+     */
     @Override
     public String getDescription() {
         return DESCRIPTION;
     }
     
+    /**
+     * Analyzes a high-level code cleanup objective and generates a task plan.
+     * 
+     * @param objective The high-level objective to analyze
+     * @param context Additional context for the task planning
+     * @return A task plan with actionable steps
+     */
     @Override
-    public TaskPlan analyzeObjective(String objective, Map<String, Object> context) {
+    public TaskPlan analyzeObjective(final String objective, final Map<String, Object> context) {
         LOGGER.info("Analyzing code cleanup objective: " + objective);
         
         // Create a list of task steps for code cleanup
+        List<TaskStep> steps = createCodeCleanupSteps();
+        
+        // Create a summary of the task plan
+        String summary = createSummary();
+        
+        return new TaskPlan(objective, steps, summary);
+    }
+    
+    /**
+     * Creates the list of task steps for code cleanup.
+     * 
+     * @return The list of task steps
+     */
+    private List<TaskStep> createCodeCleanupSteps() {
         List<TaskStep> steps = new ArrayList<>();
         
         // Step 1: Analyze the codebase
@@ -59,15 +92,47 @@ public class CodeCleanupPlannerTool extends AbstractTaskPlannerTool {
         // Step 8: Verify changes
         steps.add(createVerificationStep());
         
-        // Create a summary of the task plan
-        String summary = "This task plan provides a systematic approach to cleaning up the codebase. " +
+        return steps;
+    }
+    
+    /**
+     * Creates a summary of the task plan.
+     * 
+     * @return The summary
+     */
+    private String createSummary() {
+        return "This task plan provides a systematic approach to cleaning up the codebase. " +
                 "It starts with analyzing the current state of the code, then addresses various aspects " +
                 "of code quality including style, duplication, naming, documentation, code smells, and performance. " +
                 "Finally, it includes a verification step to ensure that the changes don't break existing functionality.";
-        
-        return new TaskPlan(objective, steps, summary);
     }
     
+    /**
+     * Creates a task step with the specified parameters.
+     * 
+     * @param description The description of the step
+     * @param instruction The instruction for the step
+     * @param estimatedEffort The estimated effort for the step
+     * @param priority The priority of the step
+     * @param dependencies The dependencies of the step
+     * @return The created task step
+     */
+    private TaskStep createTaskStep(final String description, final String instruction, 
+                                   final String estimatedEffort, final String priority, 
+                                   final List<String> dependencies) {
+        Map<String, Object> metadata = new HashMap<>();
+        metadata.put("estimatedEffort", estimatedEffort);
+        metadata.put("priority", priority);
+        metadata.put("dependencies", dependencies);
+        
+        return new TaskStep(description, instruction, metadata);
+    }
+    
+    /**
+     * Creates the analysis step.
+     * 
+     * @return The analysis step
+     */
     private TaskStep createAnalysisStep() {
         String description = "Analyze the codebase";
         String instruction = """
@@ -90,14 +155,14 @@ public class CodeCleanupPlannerTool extends AbstractTaskPlannerTool {
             ```
             """;
         
-        Map<String, Object> metadata = new HashMap<>();
-        metadata.put("estimatedEffort", "Medium");
-        metadata.put("priority", "High");
-        metadata.put("dependencies", new ArrayList<>());
-        
-        return new TaskStep(description, instruction, metadata);
+        return createTaskStep(description, instruction, "Medium", "High", new ArrayList<>());
     }
     
+    /**
+     * Creates the code style step.
+     * 
+     * @return The code style step
+     */
     private TaskStep createCodeStyleStep() {
         String description = "Fix code style issues";
         String instruction = """
@@ -119,14 +184,14 @@ public class CodeCleanupPlannerTool extends AbstractTaskPlannerTool {
             ```
             """;
         
-        Map<String, Object> metadata = new HashMap<>();
-        metadata.put("estimatedEffort", "Medium");
-        metadata.put("priority", "Medium");
-        metadata.put("dependencies", List.of("Analyze the codebase"));
-        
-        return new TaskStep(description, instruction, metadata);
+        return createTaskStep(description, instruction, "Medium", "Medium", List.of("Analyze the codebase"));
     }
     
+    /**
+     * Creates the duplicate code step.
+     * 
+     * @return The duplicate code step
+     */
     private TaskStep createDuplicateCodeStep() {
         String description = "Refactor duplicate code";
         String instruction = """
@@ -178,14 +243,14 @@ public class CodeCleanupPlannerTool extends AbstractTaskPlannerTool {
             ```
             """;
         
-        Map<String, Object> metadata = new HashMap<>();
-        metadata.put("estimatedEffort", "High");
-        metadata.put("priority", "High");
-        metadata.put("dependencies", List.of("Analyze the codebase"));
-        
-        return new TaskStep(description, instruction, metadata);
+        return createTaskStep(description, instruction, "High", "High", List.of("Analyze the codebase"));
     }
     
+    /**
+     * Creates the naming conventions step.
+     * 
+     * @return The naming conventions step
+     */
     private TaskStep createNamingConventionsStep() {
         String description = "Improve naming conventions";
         String instruction = """
@@ -220,14 +285,14 @@ public class CodeCleanupPlannerTool extends AbstractTaskPlannerTool {
             ```
             """;
         
-        Map<String, Object> metadata = new HashMap<>();
-        metadata.put("estimatedEffort", "Medium");
-        metadata.put("priority", "Medium");
-        metadata.put("dependencies", List.of("Analyze the codebase"));
-        
-        return new TaskStep(description, instruction, metadata);
+        return createTaskStep(description, instruction, "Medium", "Medium", List.of("Analyze the codebase"));
     }
     
+    /**
+     * Creates the documentation step.
+     * 
+     * @return The documentation step
+     */
     private TaskStep createDocumentationStep() {
         String description = "Add missing documentation";
         String instruction = """
@@ -271,14 +336,14 @@ public class CodeCleanupPlannerTool extends AbstractTaskPlannerTool {
             ```
             """;
         
-        Map<String, Object> metadata = new HashMap<>();
-        metadata.put("estimatedEffort", "High");
-        metadata.put("priority", "Medium");
-        metadata.put("dependencies", List.of("Analyze the codebase"));
-        
-        return new TaskStep(description, instruction, metadata);
+        return createTaskStep(description, instruction, "High", "Medium", List.of("Analyze the codebase"));
     }
     
+    /**
+     * Creates the code smells step.
+     * 
+     * @return The code smells step
+     */
     private TaskStep createCodeSmellsStep() {
         String description = "Fix code smells";
         String instruction = """
@@ -370,14 +435,14 @@ public class CodeCleanupPlannerTool extends AbstractTaskPlannerTool {
             ```
             """;
         
-        Map<String, Object> metadata = new HashMap<>();
-        metadata.put("estimatedEffort", "High");
-        metadata.put("priority", "High");
-        metadata.put("dependencies", List.of("Analyze the codebase", "Refactor duplicate code"));
-        
-        return new TaskStep(description, instruction, metadata);
+        return createTaskStep(description, instruction, "High", "High", List.of("Analyze the codebase", "Refactor duplicate code"));
     }
     
+    /**
+     * Creates the performance step.
+     * 
+     * @return The performance step
+     */
     private TaskStep createPerformanceStep() {
         String description = "Optimize performance";
         String instruction = """
@@ -414,14 +479,14 @@ public class CodeCleanupPlannerTool extends AbstractTaskPlannerTool {
             ```
             """;
         
-        Map<String, Object> metadata = new HashMap<>();
-        metadata.put("estimatedEffort", "Medium");
-        metadata.put("priority", "Medium");
-        metadata.put("dependencies", List.of("Analyze the codebase", "Fix code smells"));
-        
-        return new TaskStep(description, instruction, metadata);
+        return createTaskStep(description, instruction, "Medium", "Medium", List.of("Analyze the codebase", "Fix code smells"));
     }
     
+    /**
+     * Creates the verification step.
+     * 
+     * @return The verification step
+     */
     private TaskStep createVerificationStep() {
         String description = "Verify changes";
         String instruction = """
@@ -439,10 +504,7 @@ public class CodeCleanupPlannerTool extends AbstractTaskPlannerTool {
             ```
             """;
         
-        Map<String, Object> metadata = new HashMap<>();
-        metadata.put("estimatedEffort", "Medium");
-        metadata.put("priority", "High");
-        metadata.put("dependencies", List.of(
+        return createTaskStep(description, instruction, "Medium", "High", List.of(
             "Fix code style issues",
             "Refactor duplicate code",
             "Improve naming conventions",
@@ -450,7 +512,5 @@ public class CodeCleanupPlannerTool extends AbstractTaskPlannerTool {
             "Fix code smells",
             "Optimize performance"
         ));
-        
-        return new TaskStep(description, instruction, metadata);
     }
 }
